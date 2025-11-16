@@ -112,12 +112,12 @@ def compile_to_asm(source_code):
                 var, mod_val = cond_part.split("%")
                 var = var.strip()
                 mod_val = mod_val.split("==")[0].strip()
-                # use a temporary register for the divisor
-                temp_reg = "$t9"  # assuming $t0-$t8 are used for variables
-                assembly_lines.append(f"addi {temp_reg}, $zero, {mod_val}")       # load divisor
-                assembly_lines.append(f"div {int_vars[var]}, {temp_reg}")          # divide variable by divisor
-                assembly_lines.append(f"mfhi {int_vars[var]}")                     # remainder in variable's register
-                assembly_lines.append(f"bne {int_vars[var]}, $zero, {label_part}") # branch if remainder != 0
+                remainder_reg = "$t8"
+                divisor_reg = "$t9"
+                assembly_lines.append(f"addi {divisor_reg}, $zero, {mod_val}")
+                assembly_lines.append(f"div {int_vars[var]}, {divisor_reg}")
+                assembly_lines.append(f"mfhi {remainder_reg}")
+                assembly_lines.append(f"bne {remainder_reg}, $zero, {label_part}")
                 continue
 
             # greater-than: i > N
