@@ -66,8 +66,7 @@ def compile_to_asm(source_code):
     
     # create .text section in assembly_lines
     assembly_lines.append("\n.text")
-    assembly_lines.append("\n.globl main")
-    assembly_lines.append("main:")
+    assembly_lines.append(".globl main")
 
     # assign integer registers
     for line in c_lines:
@@ -95,6 +94,12 @@ def compile_to_asm(source_code):
         # handling labels
         if line.endswith(":"):
             assembly_lines.append(line) #labels already formatted the same as assembly
+            continue
+
+        # handling main/other function declarations
+        if line.endswith("() {"):
+            label_part = line[line.index(" ")+1 : line.index("(")].strip()
+            assembly_lines.append(label_part + ":")
             continue
 
         # handling if-goto structure
@@ -171,6 +176,10 @@ def compile_to_asm(source_code):
         if line.startswith("return"):
             assembly_lines.append("li $v0, 10")
             assembly_lines.append("syscall")
+            continue
+
+        # handling the end of main/other functions
+        if line.strip() == "}":
             continue
 
         # unhandled line
