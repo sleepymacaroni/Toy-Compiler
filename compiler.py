@@ -120,7 +120,7 @@ def compile_to_asm(source_code):
                 assembly_lines.append(f"addi {divisor_reg}, $zero, {mod_val}") # store divisor in register
                 assembly_lines.append(f"div {int_vars[var]}, {divisor_reg}") # divide variable register by divisor register
                 assembly_lines.append(f"mfhi {remainder_reg}")
-                assembly_lines.append(f"bne {remainder_reg}, $zero, {label_part}")
+                assembly_lines.append(f"beq {remainder_reg}, $zero, {label_part}")
                 continue
 
             # greater-than: i > N
@@ -163,18 +163,22 @@ def compile_to_asm(source_code):
                 continue
         
         # handling printf
-        if line.startswith("printf("):
-            content = line[7:-2].strip()
-            if content.startswith("%d"):  # printing an integer variable
+        if line.startswith("printf"):
+            content = line[7:-2].strip() # stores what's inside the parenthesis in the print statement
+            if "%d" in content:  # printing an integer variable
                 # detect variable
-                inside = content[2:].strip().strip(",").strip()
-                reg = int_vars.get(inside, "$a0")  # default fallback
-                assembly_lines.append(f"addi $v0, $zero, 1")
+                var_name = content[4:].strip(",").strip()
+                reg = int_vars[var_name] # assign reg with register holding variable value
                 assembly_lines.append(f"move $a0, {reg}")
+                assembly_lines.append(f"li $v0, 1")
+                assembly_lines.append(f"syscall")
+            elif "\\n" in content:
+                assembly_lines.append(f"li $v0, 11")
+                assembly_lines.append(f"li $a0, 10")
                 assembly_lines.append(f"syscall")
             else:  # assume string variable
                 reg = string_vars.get(content, content)
-                assembly_lines.append(f"addi $v0, $zero, 4")
+                assembly_lines.append(f"li $v0, 4")
                 assembly_lines.append(f"la $a0, {reg}")
                 assembly_lines.append(f"syscall")
             continue
