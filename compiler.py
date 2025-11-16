@@ -111,7 +111,7 @@ def compile_to_asm(source_code):
             
             # modulo check: i % n == 0
             if "%" in cond_statement and "==" in cond_statement:
-                var, mod_statement = cond_part.split("%") # ex: "i % 4 == 0" -> "i ", " 4 == 0"
+                var, mod_statement = cond_statement.split("%") # ex: "i % 4 == 0" -> "i ", " 4 == 0"
                 var = var.strip() # ex: "i " -> "i"
                 mod_val = mod_statement.split("==")[0].strip() # ex: " 4 == 0" -> "4"
                 mod_remainder = mod_statement.split("==")[1].strip() # ex: " 4 == 0" -> "0"
@@ -129,7 +129,7 @@ def compile_to_asm(source_code):
                 var = var.strip()
                 val = val.strip()
                 # ex: "i > 10" -> "i", "10"
-                
+
                 val_reg = int(val) if val.isdigit() else int_vars[val]
                 assembly_lines.append(f"addi $t9, $zero, {val_reg}" if isinstance(val_reg, int) else "")
                 assembly_lines.append(f"slt $at, {int_vars[var]}, $t9")
