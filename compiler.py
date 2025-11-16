@@ -51,7 +51,7 @@ def compile_to_asm(source_code):
     assembly_lines.append(".data")
 
     # handling constant string declarations
-    for line in source_code.splitlines():
+    for line in c_lines:
         line = line.strip()
         if line.startswith("const char*"):
             parts = line.split("=")
@@ -62,6 +62,7 @@ def compile_to_asm(source_code):
     
     # create .text section in assembly_lines
     assembly_lines.append("\n.text")
+    assembly_lines.append("\n.globl main")
     assembly_lines.append("main:")
 
     # assign integer registers
@@ -93,9 +94,81 @@ def compile_to_asm(source_code):
             assembly_lines.append(line) #labels already formatted the same as assembly
             continue
         
-        # generic place-holder
-        else:
-            assembly_lines.append("XXXXXXXXX")
+        # handling reassigning values to variables
+        if "=" in line:
+            var_name, expression = line.split("=")
+            var_name = var_name.strip()
+            # arithmatic expressions
+            expression = expression.strip().rstrip(";")
+            reg = int_vars[var_name]
+
+            # only needs to handle addition to compile fizzBuzz
+            if "+" in expression:
+                left, right = expression.split("+")
+                left = left.strip()
+                right = right.strip()
+                # if right is variable or number, use temp register
+                assembly_lines.append(f"addi {reg}, {int_vars.get(left, '$zero')}, {right}")
+                continue
+        
+        # handling if-goto structure
+        if line.startswith("if (") and "goto" in line:
+            cond_part = line[3:line.index(")")]
+            label_part = line[line.index("goto")+4:].rstrip(";").strip()
+            
+            # modulo check: i % n == 0
+            if "%" in cond_part and "==" in cond_part:
+                var, mod_val = cond_part.split("%")
+                var = var.strip()
+                mod_val = mod_val.split("==")[0].strip()
+                # use a temporary register for the divisor
+                temp_reg = "$t9"  # assuming $t0-$t8 are used for variables
+                assembly_lines.append(f"addi {temp_reg}, $zero, {mod_val}")       # load divisor
+                assembly_lines.append(f"div {int_vars[var]}, {temp_reg}")          # divide variable by divisor
+                assembly_lines.append(f"mfhi {int_vars[var]}")                     # remainder in variable's register
+                assembly_lines.append(f"bne {int_vars[var]}, $zero, {label_part}") # branch if remainder != 0
+            continue
+
+            # greater-than: i > N
+            if ">" in cond_part:
+                var, val = cond_part.split(">")
+                var = var.strip()
+                val = val.strip()
+                assembly_lines.append(f"slt $at, {val}, {int_vars[var]}")  # sets $at = 1 if val < var => var > val
+                assembly_lines.append(f"beq $at, $zero, {label_part}")
+                continue
+
+        # handling goto
+        if line.startswith("goto "):
+            label = line[5:].rstrip(";").strip()
+            assembly_lines.append(f"j {label}")
+            continue
+
+        # handling printf
+        if line.startswith("printf("):
+            content = line[7:-2].strip()
+            if content.startswith("%d"):  # printing an integer variable
+                # detect variable
+                inside = content[2:].strip().strip(",").strip()
+                reg = int_vars.get(inside, "$a0")  # default fallback
+                assembly_lines.append(f"addi $v0, $zero, 1")
+                assembly_lines.append(f"add $a0, {reg}, $zero")
+                assembly_lines.append(f"syscall")
+            else:  # assume string variable
+                reg = string_vars.get(content, content)
+                assembly_lines.append(f"addi $v0, $zero, 4")
+                assembly_lines.append(f"la $a0, {reg}")
+                assembly_lines.append(f"syscall")
+            continue
+
+        # handling return
+        if line.startswith("return"):
+            assembly_lines.append("li $v0, 10")
+            assembly_lines.append("syscall")
+            continue
+
+        # unhandled line
+        assembly_lines.append(f"; Unhandled line: {line}")
 
     return "\n".join(assembly_lines) # returns all elements of assembly_lines combined into a single string, seperated by line breaks
 
