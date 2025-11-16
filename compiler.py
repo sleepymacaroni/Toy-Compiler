@@ -50,19 +50,18 @@ def compile_to_asm(source_code):
     # create .data section in assembly_lines
     assembly_lines.append(".data")
 
-    c_lines_updated = []
+    c_lines_updated = [] # c_lines without const char* declarations
     # handling constant string declarations
     for line in c_lines:
         line = line.strip()
         if line.startswith("const char*"):
-            parts = line.split("=")
-            var_name = parts[0].split()[2].strip()
-            value = parts[1].strip().rstrip(";").replace('"', '')
-            string_vars[var_name] = var_name
-            assembly_lines.append(f"{var_name}: .asciiz \"{value}\"")
+            parts = line.split()
+            var_name = parts[2]
+            value = parts[4].rstrip(";")
+            assembly_lines.append(f"{var_name}: .asciiz {value}")
         else:
             c_lines_updated.append(line)
-    c_lines = c_lines_updated
+    c_lines = c_lines_updated # update c_lines
     
     # create .text section in assembly_lines
     assembly_lines.append("\n.text")
@@ -70,13 +69,16 @@ def compile_to_asm(source_code):
 
     # assign integer registers
     for line in c_lines:
-        if line.startswith("int "):
-            rest = line[4:].rstrip(";").strip()
-            var_name = rest.split("=")[0].strip()
+        if line.startswith("int ") and not("(" in line):
+            assignment = line[4:].rstrip(";").strip() #ex: "int i = 0;" -> "i = 0"
+            var_name = assignment.split("=")[0].strip()
+            # check if registers are available
             if t_used < len(t_registers):
                 int_vars[var_name] = t_registers[t_used]
                 t_used += 1
-
+            else:
+                print(f"Error: out of registers, cannot assign register to variable '{var_name}'. ")
+                sys.exit(1)
 
     # translating .text section to assembly
     for line in c_lines:
@@ -97,15 +99,16 @@ def compile_to_asm(source_code):
             continue
 
         # handling main/other function declarations
-        if line.endswith("() {"):
+        if line.endswith(") {"):
             label_part = line[line.index(" ")+1 : line.index("(")].strip()
             assembly_lines.append(label_part + ":")
             continue
 
         # handling if-goto structure
         if line.startswith("if (") and "goto" in line:
-            cond_part = line[line.index("(")+1 : line.index(")")]
-            label_part = line[line.index("goto")+4:].rstrip(";").strip()
+            cond_statement = line[line.index("(")+1 : line.index(")")]
+            label = line[line.index("goto")+4:].rstrip(";").strip()
+            
             
             # modulo check: i % n == 0
             if "%" in cond_part and "==" in cond_part:
@@ -130,7 +133,6 @@ def compile_to_asm(source_code):
                 assembly_lines.append(f"slt $at, {int_vars[var]}, $t9")
                 assembly_lines.append(f"beq $at, $zero, {label_part}")
                 continue
-
 
         # handling goto
         if line.startswith("goto "):
@@ -166,7 +168,7 @@ def compile_to_asm(source_code):
                 inside = content[2:].strip().strip(",").strip()
                 reg = int_vars.get(inside, "$a0")  # default fallback
                 assembly_lines.append(f"addi $v0, $zero, 1")
-                assembly_lines.append(f"add $a0, {reg}, $zero")
+                assembly_lines.append(f"move $a0, {reg}")
                 assembly_lines.append(f"syscall")
             else:  # assume string variable
                 reg = string_vars.get(content, content)
