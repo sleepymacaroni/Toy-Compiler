@@ -9,22 +9,22 @@ def main():
     input_file = sys.argv[1] # C file
     output_file = sys.argv[2] # Assembly file
 
-# Read Input File:
-try:
-    with open(input_file, "r") as f:
-        source_code = f.read()
-except FileNotFoundError:
-    print(f"Error: {input_file} not found.")
-    sys.exit(1)
+    # Read Input File:
+    try:
+        with open(input_file, "r") as f:
+            source_code = f.read()
+    except FileNotFoundError:
+        print(f"Error: {input_file} not found.")
+        sys.exit(1)
 
-# Compile Source Code to Assembly:
-assembly_code = compile_to_asm(source_code)
+    # Compile Source Code to Assembly:
+    assembly_code = compile_to_asm(source_code)
 
-# Write Assembly Code to Output File:
-with open(output_file, "w") as f:
-    f.write(assembly_code)
+    # Write Assembly Code to Output File:
+    with open(output_file, "w") as f:
+        f.write(assembly_code)
 
-print(f"Compilation complete! Assembly written to {output_file}")
+    print(f"Compilation complete! Assembly written to {output_file}")
 
 
 
@@ -50,6 +50,7 @@ def compile_to_asm(source_code):
     # create .data section in assembly_lines
     assembly_lines.append(".data")
 
+    c_lines_updated = []
     # handling constant string declarations
     for line in c_lines:
         line = line.strip()
@@ -59,6 +60,9 @@ def compile_to_asm(source_code):
             value = parts[1].strip().rstrip(";").replace('"', '')
             string_vars[var_name] = var_name
             assembly_lines.append(f"{var_name}: .asciiz \"{value}\"")
+        else:
+            c_lines_updated.append(line)
+    c_lines = c_lines_updated
     
     # create .text section in assembly_lines
     assembly_lines.append("\n.text")
@@ -79,41 +83,23 @@ def compile_to_asm(source_code):
     for line in c_lines:
 
         # handling integer declarations
-        if line.startswith("int "):
+        if line.startswith("int ") and "=" in line:
             rest_of_line = line[4:].rstrip(";").strip()
-            if "=" in rest_of_line:
-                var_name, value = rest_of_line.split("=")
-                var_name = var_name.strip()
-                value = value.strip()
-                reg = int_vars[var_name]
-                assembly_lines.append(f"addi {reg}, $zero, {value}")
+            var_name, value = rest_of_line.split("=")
+            var_name = var_name.strip()
+            value = value.strip()
+            reg = int_vars[var_name]
+            assembly_lines.append(f"addi {reg}, $zero, {value}")
             continue
 
         # handling labels
         if line.endswith(":"):
             assembly_lines.append(line) #labels already formatted the same as assembly
             continue
-        
-        # handling reassigning values to variables
-        if "=" in line:
-            var_name, expression = line.split("=")
-            var_name = var_name.strip()
-            # arithmatic expressions
-            expression = expression.strip().rstrip(";")
-            reg = int_vars[var_name]
 
-            # only needs to handle addition to compile fizzBuzz
-            if "+" in expression:
-                left, right = expression.split("+")
-                left = left.strip()
-                right = right.strip()
-                # if right is variable or number, use temp register
-                assembly_lines.append(f"addi {reg}, {int_vars.get(left, '$zero')}, {right}")
-                continue
-        
         # handling if-goto structure
         if line.startswith("if (") and "goto" in line:
-            cond_part = line[3:line.index(")")]
+            cond_part = line[line.index("(")+1 : line.index(")")]
             label_part = line[line.index("goto")+4:].rstrip(";").strip()
             
             # modulo check: i % n == 0
@@ -127,7 +113,7 @@ def compile_to_asm(source_code):
                 assembly_lines.append(f"div {int_vars[var]}, {temp_reg}")          # divide variable by divisor
                 assembly_lines.append(f"mfhi {int_vars[var]}")                     # remainder in variable's register
                 assembly_lines.append(f"bne {int_vars[var]}, $zero, {label_part}") # branch if remainder != 0
-            continue
+                continue
 
             # greater-than: i > N
             if ">" in cond_part:
@@ -144,6 +130,26 @@ def compile_to_asm(source_code):
             assembly_lines.append(f"j {label}")
             continue
 
+        # handling reassigning values to variables
+        if "=" in line:
+            line_clean = line
+            if line.startswith("int "):
+                line_clean = line[4:]  # remove the first 4 chars
+            var_name, expression = line_clean.split("=", 1)
+            var_name = var_name.strip()
+            # arithmatic expressions
+            expression = expression.strip().rstrip(";")
+            reg = int_vars[var_name]
+
+            # only needs to handle addition to compile fizzBuzz
+            if "+" in expression:
+                left, right = expression.split("+")
+                left = left.strip()
+                right = right.strip()
+                # if right is variable or number, use temp register
+                assembly_lines.append(f"addi {reg}, {int_vars.get(left, '$zero')}, {right}")
+                continue
+        
         # handling printf
         if line.startswith("printf("):
             content = line[7:-2].strip()
