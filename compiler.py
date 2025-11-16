@@ -16,3 +16,21 @@ try:
 except FileNotFoundError:
     print(f"Error: {input_file} not found.")
     sys.exit(1)
+
+# Compile Source Code to Assembly:
+assembly_code = compile_to_asm(source_code)
+
+# Write Assembly Code to Output File:
+with open(output_file, "w") as f:
+    f.write(assembly_code)
+
+print(f"Compilation complete! Assembly written to {output_file}")
+
+
+def compile_to_asm(source_code):
+    assembly_lines [] # list that will be filled with strings, each one representing a line of assembly language
+
+    return "\n".join(assembly_lines) # returns all elements of assembly_lines combined into a single string, seperated by line breaks
+
+if __name__ == "__main__":
+    main()
