@@ -9,3 +9,10 @@ def main():
     input_file = sys.argv[1] # C file
     output_file = sys.argv[2] # Assembly file
 
+# Read Input File:
+try:
+    with open(input_file, "r") as f:
+        source_code = f.read()
+except FileNotFoundError:
+    print(f"Error: {input_file} not found.")
+    sys.exit(1)
