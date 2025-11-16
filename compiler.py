@@ -99,7 +99,7 @@ def compile_to_asm(source_code):
             continue
 
         # handling main/other function declarations
-        if line.endswith(") {"):
+        if line.endswith("{"):
             label_part = line[line.index(" ")+1 : line.index("(")].strip()
             assembly_lines.append(label_part + ":")
             continue
@@ -107,7 +107,7 @@ def compile_to_asm(source_code):
         # handling if-goto structure
         if line.startswith("if (") and "goto" in line:
             cond_statement = line[line.index("(")+1 : line.index(")")]
-            label = line[line.index("goto")+4:].rstrip(";").strip()
+            label_part = line[line.index("goto")+4:].rstrip(";").strip()
             
             # modulo check: i % n == 0
             if "%" in cond_statement and "==" in cond_statement:
@@ -131,9 +131,9 @@ def compile_to_asm(source_code):
                 # ex: "i > 10" -> "i", "10"
 
                 val_reg = int(val) if val.isdigit() else int_vars[val]
-                assembly_lines.append(f"addi $t9, $zero, {val_reg}" if isinstance(val_reg, int) else "")
-                assembly_lines.append(f"slt $at, {int_vars[var]}, $t9")
-                assembly_lines.append(f"beq $at, $zero, {label_part}")
+                assembly_lines.append(f"addi $t9, $zero, {val_reg}")
+                assembly_lines.append(f"slt $at, $t9, {int_vars[var]}")  # reversed order
+                assembly_lines.append(f"bne $at, $zero, {label_part}")   # branch if true
                 continue
 
         # handling goto
@@ -153,13 +153,12 @@ def compile_to_asm(source_code):
             expression = expression.strip().rstrip(";")
             reg = int_vars[var_name]
 
-            # only needs to handle addition to compile fizzBuzz
+            # only needs to handle addition between a variable and immediate to compile fizzBuzz
             if "+" in expression:
                 left, right = expression.split("+")
                 left = left.strip()
                 right = right.strip()
-                # if right is variable or number, use temp register
-                assembly_lines.append(f"addi {reg}, {int_vars.get(left, '$zero')}, {right}")
+                assembly_lines.append(f"addi {reg}, {reg}, {right}")
                 continue
         
         # handling printf
