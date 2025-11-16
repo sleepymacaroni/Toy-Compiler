@@ -125,9 +125,12 @@ def compile_to_asm(source_code):
                 var, val = cond_part.split(">")
                 var = var.strip()
                 val = val.strip()
-                assembly_lines.append(f"slt $at, {val}, {int_vars[var]}")  # sets $at = 1 if val < var => var > val
+                val_reg = int(val) if val.isdigit() else int_vars[val]
+                assembly_lines.append(f"addi $t9, $zero, {val_reg}" if isinstance(val_reg, int) else "")
+                assembly_lines.append(f"slt $at, {int_vars[var]}, $t9")
                 assembly_lines.append(f"beq $at, $zero, {label_part}")
                 continue
+
 
         # handling goto
         if line.startswith("goto "):
