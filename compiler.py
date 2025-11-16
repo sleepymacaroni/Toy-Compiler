@@ -44,7 +44,7 @@ def compile_to_asm(source_code):
     string_vars = {}    # empty dictionary
                         # purpose: map variable names to their .data labels in the assembly code
 
-    t_registers = [f"$t{i}" for i in range(10)] # list of registers, $t0 to $t9
+    t_registers = [f"$t{i}" for i in range(8)] # list of registers, $t0 to $t7 ($t8 and $t9 reserved for division)
     t_used = 0
 
     # create .data section in assembly_lines
@@ -70,7 +70,7 @@ def compile_to_asm(source_code):
     # assign integer registers
     for line in c_lines:
         if line.startswith("int ") and not("(" in line):
-            assignment = line[4:].rstrip(";").strip() #ex: "int i = 0;" -> "i = 0"
+            assignment = line[4:].rstrip(";").strip() # ex: "int i = 0;" -> "i = 0"
             var_name = assignment.split("=")[0].strip()
             # check if registers are available
             if t_used < len(t_registers):
@@ -95,7 +95,7 @@ def compile_to_asm(source_code):
 
         # handling labels
         if line.endswith(":"):
-            assembly_lines.append(line) #labels already formatted the same as assembly
+            assembly_lines.append(line) # labels already formatted the same as assembly
             continue
 
         # handling main/other function declarations
@@ -109,25 +109,27 @@ def compile_to_asm(source_code):
             cond_statement = line[line.index("(")+1 : line.index(")")]
             label = line[line.index("goto")+4:].rstrip(";").strip()
             
-            
             # modulo check: i % n == 0
-            if "%" in cond_part and "==" in cond_part:
-                var, mod_val = cond_part.split("%")
-                var = var.strip()
-                mod_val = mod_val.split("==")[0].strip()
+            if "%" in cond_statement and "==" in cond_statement:
+                var, mod_statement = cond_part.split("%") # ex: "i % 4 == 0" -> "i ", " 4 == 0"
+                var = var.strip() # ex: "i " -> "i"
+                mod_val = mod_statement.split("==")[0].strip() # ex: " 4 == 0" -> "4"
+                mod_remainder = mod_statement.split("==")[1].strip() # ex: " 4 == 0" -> "0"
                 remainder_reg = "$t8"
                 divisor_reg = "$t9"
-                assembly_lines.append(f"addi {divisor_reg}, $zero, {mod_val}")
-                assembly_lines.append(f"div {int_vars[var]}, {divisor_reg}")
+                assembly_lines.append(f"addi {divisor_reg}, $zero, {mod_val}") # store divisor in register
+                assembly_lines.append(f"div {int_vars[var]}, {divisor_reg}") # divide variable register by divisor register
                 assembly_lines.append(f"mfhi {remainder_reg}")
                 assembly_lines.append(f"bne {remainder_reg}, $zero, {label_part}")
                 continue
 
             # greater-than: i > N
-            if ">" in cond_part:
-                var, val = cond_part.split(">")
+            if ">" in cond_statement:
+                var, val = cond_statement.split(">")
                 var = var.strip()
                 val = val.strip()
+                # ex: "i > 10" -> "i", "10"
+                
                 val_reg = int(val) if val.isdigit() else int_vars[val]
                 assembly_lines.append(f"addi $t9, $zero, {val_reg}" if isinstance(val_reg, int) else "")
                 assembly_lines.append(f"slt $at, {int_vars[var]}, $t9")
