@@ -64,18 +64,28 @@ def compile_to_asm(source_code):
     assembly_lines.append("\n.text")
     assembly_lines.append("main:")
 
+    # assign integer registers
+    for line in c_lines:
+        if line.startswith("int "):
+            rest = line[4:].rstrip(";").strip()
+            var_name = rest.split("=")[0].strip()
+            if t_used < len(t_registers):
+                int_vars[var_name] = t_registers[t_used]
+                t_used += 1
+
+
     # translating .text section to assembly
     for line in c_lines:
 
         # handling integer declarations
         if line.startswith("int "):
-            rest_of_line = line[4:].rstrip(";").strip() # string storing all of line following "int "
-            # in fizzBuzz.c whenever an int variable is created, it is always assigned a value in the same line
-            # thus, the following if block should always execute
-            var_name = rest_of_line.split("=")[0].strip()
-            if t_used < len(t_registers):
-                int_vars[var_name] = t_registers[t_used]
-                t_used += 1
+            rest_of_line = line[4:].rstrip(";").strip()
+            if "=" in rest_of_line:
+                var_name, value = rest_of_line.split("=")
+                var_name = var_name.strip()
+                value = value.strip()
+                reg = int_vars[var_name]
+                assembly_lines.append(f"addi {reg}, $zero, {value}")
             continue
 
         # handling labels
