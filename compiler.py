@@ -27,8 +27,16 @@ with open(output_file, "w") as f:
 print(f"Compilation complete! Assembly written to {output_file}")
 
 
+
 def compile_to_asm(source_code):
-    assembly_lines [] # list that will be filled with strings, each one representing a line of assembly language
+    assembly_lines = [] # list that will be filled with strings, each one representing a line of assembly code
+    c_lines = [] # list that will be filled with strings, each one representing a line of C code
+
+    # fill c_lines with lines of code from input file
+    for line in source_code.splitlines():
+        if line.strip() and not(line.startswith("#")):
+            # ignore comments
+            c_lines.append(line)
 
     return "\n".join(assembly_lines) # returns all elements of assembly_lines combined into a single string, seperated by line breaks
 
